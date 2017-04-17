@@ -253,9 +253,9 @@ public final class GraphJobRunner<S extends Writable, V extends Writable, E exte
         sendHeartBeat();
 
         peer.getCounter(GraphJobCounter.ITERATIONS).increment(1);
-
+        LOG.info("Application Superstep boundary");
         peer.sync();
-
+        LOG.info("Application Sync completed");
       }
       
       for (SubgraphComputeWrapup<S, V, E, M, I, J, K> subgraph : subgraphs) {

@@ -46,6 +46,8 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.Version;
 
 import in.dream_lab.goffish.SubgraphCompute;
@@ -85,7 +87,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 	private static final Object queryLock = new Object();
 	private static boolean queryStart=false;//later lock this when multithreaded
         private static boolean queryEnd=false;//later lock this when multithreaded
-
+        private static boolean gcCalled=false;
 
 	static Hueristics hueristics = new Hueristics(); 
 	
@@ -237,7 +239,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 	private void init(Collection<IMessage<LongWritable, Text>> messageList){
 		String arguments = Arguments;
 		getSubgraph().getSubgraphValue().Arguments=Arguments;
-	    long minSubgraphId=Long.MAX_VALUE;
+	  
 	
 		
 	    getSubgraph().getSubgraphValue().path = new ArrayList<Step>();
@@ -313,14 +315,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 		getSubgraph().getSubgraphValue().revLocalVertexList = new LinkedList<VertexMessageSteps>();
 //		inVerticesMap = new HashMap<Long, HashMap<String,LinkedList<Long>>>();
 //		remoteSubgraphMap = new HashMap<Long, Long>();
-		hueristics=HueristicsLoad.getInstance();
-		
-		time=System.currentTimeMillis();
-		
-		
-		
-
-
+//		hueristics=HueristicsLoad.getInstance();//loading this at a different place
 
 		
 	}
@@ -346,6 +341,24 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 			indexSearcher = new IndexSearcher(indexReader);
 		}
 		
+	}
+	
+	/**
+	 * Initialize Lucene in memory
+	 * searcher = new IndexSearcher (new RAMDirectory (indexDirectory)); 
+	 */
+	private void initInMemoryLucene() throws InterruptedException, IOException{
+	     {
+               long pseudoPid=getSubgraph().getSubgraphId().get() >> 32;
+                     initDone = true;
+                     vertexIndexDir = new File(ConfigFile.basePath+ "/index/Partition"+pseudoPid+"/vertexIndex");
+                     vertexDirectory = FSDirectory.open(vertexIndexDir);
+                     analyzer = new StandardAnalyzer(Version.LATEST);
+                     indexReader  = DirectoryReader.open(new RAMDirectory(vertexDirectory, IOContext.READ));//passing RAM directory to load indexes in memory
+                     indexSearcher = new IndexSearcher(indexReader);
+             }
+	  
+	  
 	}
 	
 
@@ -506,7 +519,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 	public void compute(Collection<IMessage<LongWritable, Text>> messageList) {
 		
 		
-		System.out.println("**********SUPERSTEPS***********:" + getSuperstep() +"Message List Size:" + messageList.size());
+//		System.out.println("**********SUPERSTEPS***********:" + getSuperstep() +"Message List Size:" + messageList.size());
 		
 		
 		// STATIC ONE TIME PROCESSES
@@ -526,7 +539,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 					try{
 						synchronized (initLock) {
 							if ( !initDone )
-								initLucene();
+							      initInMemoryLucene();
 						}
 					}catch(Exception e){e.printStackTrace();}
 					
@@ -536,10 +549,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 	
 			else if (getSuperstep()==1) {
 				// GATHER HEURISTICS FROM OTHER SUBGRAPHS
-				System.out.println("*****************Gathering heuristics from other Subgraphs to get Global Heuristics********************");
-				//gatherHueristics(messageList);
-				System.out.println("*******************************************************************************************************");
-				System.out.println("TIME READING HEURISTICS:" + (System.currentTimeMillis()-time));
+				
 
 				
 				if(getSubgraph().getSubgraphValue().InEdges==null){
@@ -652,7 +662,20 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 				
 					
 			}
-			System.out.println("TIME ACCUMULATING INEDGES:" + (System.currentTimeMillis()-time));
+			if(!gcCalled){
+			System.gc();
+			System.runFinalization();
+			}
+			LOG.info("TIME ACCUMULATING INEDGES....Starting loading of heuristics");
+			hueristics=HueristicsLoad.getInstance();
+			LOG.info("Heuristic Loaded");
+
+			if(!gcCalled){
+	                        System.gc();
+	                        System.runFinalization();
+	                        gcCalled=true;
+	                }
+			
 		}
 		}
 		
@@ -1009,10 +1032,12 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 						forwardOutputToSubgraph(1,vertexMessageStep);
 					}
 					else{
+					    time=System.currentTimeMillis();
 						if ( !getSubgraph().getSubgraphValue().resultsMap.containsKey(vertexMessageStep.startVertexId) )
 							getSubgraph().getSubgraphValue().resultsMap.put(vertexMessageStep.startVertexId, new ResultSet());
 						//System.out.println("MESSAGE ADDED TO FORWARDRESULTSET:" + vertexMessageStep.message);
 						getSubgraph().getSubgraphValue().resultsMap.get(vertexMessageStep.startVertexId).forwardResultSet.add(vertexMessageStep.message);
+						getSubgraph().getSubgraphValue().resultCollectionTime+=(System.currentTimeMillis()-time);
 					}
 						
 					continue;
@@ -1192,10 +1217,12 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 						forwardOutputToSubgraph(0,vertexMessageStep);
 					}
 					else{//else if current subgraph is source subgraph then store the results
+					  time=System.currentTimeMillis();
 						if ( !getSubgraph().getSubgraphValue().resultsMap.containsKey(vertexMessageStep.startVertexId) )
 							getSubgraph().getSubgraphValue().resultsMap.put(vertexMessageStep.startVertexId, new ResultSet());
 						
 						getSubgraph().getSubgraphValue().resultsMap.get(vertexMessageStep.startVertexId).revResultSet.add(vertexMessageStep.message);
+						getSubgraph().getSubgraphValue().resultCollectionTime+=(System.currentTimeMillis() - time);
 					}
 										
 					continue;
@@ -1350,7 +1377,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 					}
 					/* filtered vertex*/
 					else {
-					        LOG.info("PROP:"+prevStep.property.toString());
+//					        LOG.info("PROP:"+prevStep.property.toString());
 //						ISubgraphObjectProperties subgraphProperties = subgraphInstance.getPropertiesForVertex(currentVertex.getId());
 						if ( compareValuesUtil(currentVertex.getValue().get(new Text(prevStep.property.toString())).toString(), prevStep.value.toString()) ) {
 							/* add appropriate value later*/
@@ -1662,7 +1689,7 @@ SubgraphComputeWrapup<pathDistrSubgraphState, MapWritable, MapWritable, Text, Lo
 					//output(partition.getId(), subgraph.getId(), partialForwardPath); 
 				}
 		}
-		
+	LOG.info("Cumulative Result Collection:" +  getSubgraph().getSubgraphValue().resultCollectionTime);	
 		clear();
 	}
 

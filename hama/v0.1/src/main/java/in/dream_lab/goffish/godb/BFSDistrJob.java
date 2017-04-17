@@ -20,6 +20,7 @@ import com.sun.tools.javac.util.List;
 import in.dream_lab.goffish.GraphJob;
 import in.dream_lab.goffish.LongMapJSONReader;
 import in.dream_lab.goffish.LongMapPartitionJSONReader;
+import in.dream_lab.goffish.LongMapPartitionSubsetGsonReader;
 import in.dream_lab.goffish.LongMapPartitionSubsetJsonReader;
 import in.dream_lab.goffish.LongTextAdjacencyListReader;
 import in.dream_lab.goffish.NonSplitTextInputFormat;
@@ -45,7 +46,7 @@ public class BFSDistrJob {
 		  job.setSubgraphValueClass(BFSDistrSubgraphState.class);
 		  /* Reader configuration */
 		    job.setInputFormat(NonSplitTextInputFormat.class);
-		    job.setInputReaderClass(LongMapPartitionSubsetJsonReader.class);
+		    job.setInputReaderClass(LongMapPartitionSubsetGsonReader.class);
 		  
 		  //job.setSubgraphComputeClass(SubgraphComputeReduce.class);
 		  job.waitForCompletion(true);

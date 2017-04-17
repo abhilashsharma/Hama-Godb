@@ -62,7 +62,7 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 		Arguments=initMsg;
 	}
 	public static final Log LOG = LogFactory.getLog(reachabilityDistr.class);
-	
+	long time;
 	String Arguments=null;
 	static File vertexIndexDir;
 	static Directory vertexDirectory;
@@ -79,7 +79,7 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 	static boolean statsLoaded=true;
 	private static boolean queryStart=false;//later lock this when multithreaded
         private static boolean queryEnd=false;//later lock this when multithreaded
-
+        private static boolean gcCalled=false;//later lock this when multithreaded
 	/**
 	 * Representative class to keep tab of next vertex to be processed,  this is different for 
 	 * path queries, hence defined separately
@@ -164,7 +164,7 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 		getSubgraph().getSubgraphValue().revLocalVertexList = new LinkedList<VertexMessageSteps>();
 		
 		
-		getSubgraph().getSubgraphValue().hueristics=HueristicsLoad.getInstance();
+//		getSubgraph().getSubgraphValue().hueristics=HueristicsLoad.getInstance();//loading this at a different place
 	}
 
 	
@@ -458,6 +458,18 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 
 
 				}
+				if(!gcCalled){
+		                        System.gc();
+		                        System.runFinalization();
+		                        }
+				LOG.info("Loading Heuristics");
+				getSubgraph().getSubgraphValue().hueristics=HueristicsLoad.getInstance();
+				LOG.info("Loading Heuristics Complete");
+				if(!gcCalled){
+				        gcCalled=true;
+		                        System.gc();
+		                        System.runFinalization();
+		                        }
 
 			}
 		}
@@ -716,13 +728,14 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 									sendStopMessage(vertexMessageStep.stepsTraversed);
 								}
 								else{
-
+								      time = System.currentTimeMillis();
 									if (vertexMessageStep.stepsTraversed<=getSubgraph().getSubgraphValue().noOfSteps){
 
 										forwardOutputToSubgraph(1,new VertexMessageSteps(otherVertex.getVertexId().get(),_modifiedMessage.toString(),vertexMessageStep.stepsTraversed+1, vertexMessageStep.startSubgraphId, vertexMessageStep.startSubgraphId));
 									}
 									getSubgraph().getSubgraphValue().noOfSteps = vertexMessageStep.stepsTraversed;
 									sendStopMessage(vertexMessageStep.stepsTraversed);
+									getSubgraph().getSubgraphValue().resultCollectionTime+=(System.currentTimeMillis()-time);
 								}							
 							}
 						}
@@ -782,12 +795,14 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
 								}
 								else{
 									//System.out.println("REV:4");
+								        time=System.currentTimeMillis();
 									if (vertexMessageStep.stepsTraversed<=getSubgraph().getSubgraphValue().noOfSteps){
 										//System.out.println("REV:5");
 										forwardOutputToSubgraph(0,new VertexMessageSteps(otherVertexId,_modifiedMessage.toString(),vertexMessageStep.stepsTraversed+1, vertexMessageStep.startSubgraphId,vertexMessageStep.startSubgraphId));
 									}
 									getSubgraph().getSubgraphValue().noOfSteps = vertexMessageStep.stepsTraversed;
 									sendStopMessage(vertexMessageStep.stepsTraversed);
+									getSubgraph().getSubgraphValue().resultCollectionTime+=(System.currentTimeMillis()-time);
 								}	
 							}
 						}
@@ -877,7 +892,7 @@ SubgraphComputeWrapup<reachabilityDistrSubgraphState, MapWritable, MapWritable, 
                           System.out.println("ResultREVERSE  : " + partialRevPath);
                   }
           }
-          
+          LOG.info("Cumulative Result Collection:" + getSubgraph().getSubgraphValue().resultCollectionTime);
 		clear();
 	}
 	

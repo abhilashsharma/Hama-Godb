@@ -277,6 +277,7 @@ public class BFSDistr extends
 		
 		
 		private void join(IMessage<LongWritable,Text> _message) {
+		        long time=System.currentTimeMillis();
 			String message =  _message.getMessage().toString();
 			String[] split = message.split(Pattern.quote(";"));
 			Long _startVertexId = Long.parseLong( split[2] );
@@ -286,11 +287,14 @@ public class BFSDistr extends
 				getSubgraph().getSubgraphValue().resultsMap.get(_startVertexId).forwardResultSet.add(split[4]);
 			else
 				getSubgraph().getSubgraphValue().resultsMap.get(_startVertexId).revResultSet.add(split[4]);
+			
+			getSubgraph().getSubgraphValue().resultCollectionTime+=System.currentTimeMillis()-time;
 		}
 		
 		
 		
 		private void forwardOutputToSubgraph(int direction,VertexMessageSteps step) {
+		        long time=System.currentTimeMillis();
 			String dir="for()";
 			if(direction==0)
 				dir="rev()";
@@ -301,7 +305,7 @@ public class BFSDistr extends
 			sendMessage(new LongWritable(step.startSubgraphId), remoteM);
 			//sendMessage(remoteM);
 
-			
+			getSubgraph().getSubgraphValue().resultCollectionTime+=System.currentTimeMillis()-time;
 		}
 		
 		private VertexMessageSteps processMessage(IMessage<LongWritable,Text> _message){
@@ -563,8 +567,8 @@ public class BFSDistr extends
 	        queryEnd=true;
 	        LOG.info("Ending Query Execution");
 	  }
-		LOG.info("In wrapup:");
-		long Time= System.currentTimeMillis();
+		
+		
 		for(Map.Entry<Long, ResultSet> entry: getSubgraph().getSubgraphValue().resultsMap.entrySet()) {
 			if (!entry.getValue().revResultSet.isEmpty())
 				for(String partialRevPath: entry.getValue().revResultSet) {
@@ -585,9 +589,9 @@ public class BFSDistr extends
 				}
 		}
 		
-		Time=System.currentTimeMillis()-Time;
+		
 //		LOG.info("SetSize:" + getSubgraph().getSubgraphValue().resultsMap.size());
-		LOG.info("Result Collection Time:" + Time);
+		LOG.info("Cumulative Result Collection:" + getSubgraph().getSubgraphValue().resultCollectionTime);
 		
 		//clearing Subgraph Value for next query
 		clear();

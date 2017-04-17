@@ -46,8 +46,8 @@ import org.apache.hama.bsp.BSPPeerImpl;
 import org.apache.hama.bsp.sync.SyncException;
 import org.apache.hama.commons.util.KeyValuePair;
 import org.apache.hama.util.ReflectionUtils;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONValue;
+import com.google.gson.*;
+
 
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -72,7 +72,7 @@ import in.dream_lab.goffish.api.IRemoteVertex;
  * This Reader only subset of the properties
  */
 
-public class LongMapPartitionSubsetJsonReader<S extends Writable, V extends Writable, E extends Writable, K extends Writable, M extends Writable>
+public class LongMapPartitionSubsetGsonReader<S extends Writable, V extends Writable, E extends Writable, K extends Writable, M extends Writable>
     implements
     IReader<Writable, Writable, Writable, Writable, S, V, E, LongWritable, LongWritable, LongWritable> {
 
@@ -83,17 +83,19 @@ public class LongMapPartitionSubsetJsonReader<S extends Writable, V extends Writ
   private Map<LongWritable, LongWritable> vertexSubgraphMap;
   private Set<String> vertexPropertySet= new HashSet<String>();
   private Set<String> edgePropertySet=new HashSet<String>();
-  public LongMapPartitionSubsetJsonReader(
+  
+  JsonParser GsonParser = new JsonParser();
+  public LongMapPartitionSubsetGsonReader(
               BSPPeerImpl<Writable, Writable, Writable, Writable, Message<K, M>> peer,
               HashMap<K, Integer> subgraphPartitionMap) {
     this.peer = peer;
     this.subgraphPartitionMap = subgraphPartitionMap;
     this.conf = peer.getConfiguration();
     this.vertexSubgraphMap = new HashMap<LongWritable, LongWritable>();
-    this.vertexPropertySet.add("nclass");
+    this.vertexPropertySet.add("patid");
   }
   
-  public static final Log LOG = LogFactory.getLog(LongMapPartitionSubsetJsonReader.class);
+  public static final Log LOG = LogFactory.getLog(LongMapPartitionSubsetGsonReader.class);
   Integer pseudoPartId=null;
   @Override
   public List<ISubgraph<S, V, E, LongWritable, LongWritable, LongWritable>> getSubgraphs()
@@ -311,7 +313,7 @@ public class LongMapPartitionSubsetJsonReader<S extends Writable, V extends Writ
   
   @SuppressWarnings("unchecked")
   Vertex<V, E, LongWritable, LongWritable> createVertex(String JSONString) {
-    JSONArray JSONInput = (JSONArray) JSONValue.parse(JSONString);
+    JsonArray JSONInput = GsonParser.parse(JSONString).getAsJsonArray();
 
     LongWritable sourceID = new LongWritable(
         Long.valueOf(JSONInput.get(0).toString()));
@@ -343,16 +345,16 @@ public class LongMapPartitionSubsetJsonReader<S extends Writable, V extends Writ
     
     vertex.setValue(vertexValue);
 
-    JSONArray edgeList = (JSONArray) JSONInput.get(2);
+    JsonArray edgeList = (JsonArray) JSONInput.get(2);
     for (Object edgeInfo : edgeList) {
-      Object edgeValues[] = ((JSONArray) edgeInfo).toArray();
+      JsonArray edgeValues = ((JsonArray) edgeInfo).getAsJsonArray();
       LongWritable sinkID = new LongWritable(
-          Long.valueOf(edgeValues[0].toString()));
+          Long.valueOf(edgeValues.get(0).toString()));
       LongWritable edgeID = new LongWritable(
-          Long.valueOf(edgeValues[1].toString()));
+          Long.valueOf(edgeValues.get(1).toString()));
       //fix this
       //same format as vertex
-      String[] eprop= edgeValues[2].toString().split(Pattern.quote("$"));
+      String[] eprop= edgeValues.get(2).toString().split(Pattern.quote("$"));
       MapWritable edgeMap=new MapWritable();
       for(int i=0;i<eprop.length;i++){
         String[] map=eprop[i].split(Pattern.quote(":"));

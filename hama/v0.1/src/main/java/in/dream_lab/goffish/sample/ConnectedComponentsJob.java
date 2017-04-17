@@ -29,6 +29,7 @@ import org.apache.hama.bsp.TextOutputFormat;
 
 import in.dream_lab.goffish.GraphJob;
 import in.dream_lab.goffish.NonSplitTextInputFormat;
+import in.dream_lab.goffish.PartitionsLongTextAdjacencyListReader;
 
 public class ConnectedComponentsJob {
 
@@ -47,10 +48,11 @@ public class ConnectedComponentsJob {
     job.setInputPath(new Path(args[0]));
     job.setOutputPath(new Path(args[1]));
     job.setGraphMessageClass(LongWritable.class);
+    job.setInitialInput(args[2]);
 
     /* Reader configuration */
     job.setInputFormat(NonSplitTextInputFormat.class);
-    job.setInputReaderClass(LongTextAdjacencyListReader.class);
+    job.setInputReaderClass(PartitionsLongTextAdjacencyListReader.class);
 
     // Blocks till job completed
     job.waitForCompletion(true);

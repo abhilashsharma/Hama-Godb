@@ -19,12 +19,12 @@ import in.dream_lab.goffish.LongMapPartitionJSONReaderNonEdge;
 import in.dream_lab.goffish.LongMapPartitionSubsetJsonReader;
 import in.dream_lab.goffish.NonSplitTextInputFormat;
 
-public class pathDistrJob {
+public class VEDistrJob {
 
 	 public static void main(String args[]) throws IOException,InterruptedException, ClassNotFoundException, ParseException
 	  {
 		  HamaConfiguration conf = new HamaConfiguration();
-		  GraphJob job = new GraphJob(conf, pathDistr.class);
+		  GraphJob job = new GraphJob(conf, VEDistr.class);
 		  job.setJobName("Path");
 		  job.setInputFormat(TextInputFormat.class);
 		  job.setInputKeyClass(LongWritable.class);
@@ -37,7 +37,7 @@ public class pathDistrJob {
 		  job.setInputPath(new Path(args[0]));
 		  job.setOutputPath(new Path(args[1]));
 		  job.setInitialInput(readArgsFromFile());
-		  job.setSubgraphValueClass(pathDistrSubgraphState.class);
+		  job.setSubgraphValueClass(VEDistrSubgraphState.class);
 		  job.setInputFormat(NonSplitTextInputFormat.class);
 		  job.setInputReaderClass(LongMapPartitionSubsetJsonReader.class);
 		  
@@ -47,7 +47,7 @@ public class pathDistrJob {
 	
 	 static String  readArgsFromFile() throws IOException{
            String Args="";
-           String fileName="/home/abhilash/abhilash/ReportQueriesnclass.txt";
+           String fileName="/home/abhilash/abhilash/VertexQueries-nclass.txt";
            FileReader fr = new FileReader(fileName);
            BufferedReader br = new BufferedReader(fr);
 

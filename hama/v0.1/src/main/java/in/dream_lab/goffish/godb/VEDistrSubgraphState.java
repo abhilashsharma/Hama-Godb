@@ -6,17 +6,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.io.Writable;
 
-import in.dream_lab.goffish.godb.BFSDistr.ResultSet;
-import in.dream_lab.goffish.godb.BFSDistr.Step;
-import in.dream_lab.goffish.godb.BFSDistr.VertexMessageSteps;
+import in.dream_lab.goffish.godb.VEDistr.Step;
 
-public class BFSDistrSubgraphState implements Writable  {
+
+public class VEDistrSubgraphState implements Writable  {
 
 	PrintWriter writer;
 
@@ -27,13 +28,10 @@ public class BFSDistrSubgraphState implements Writable  {
 	//private ISubgraphInstance subgraphInstance = null;
 	ArrayList<Step> path = null;
 	
-	LinkedList<VertexMessageSteps> forwardRemoteVertexList = new LinkedList<VertexMessageSteps>();
-	//private LinkedList<VertexMessageSteps> revRemoteVertexList = new LinkedList<VertexMessageSteps>();
 
-	HashMap<Long,ResultSet> resultsMap = new HashMap<Long,ResultSet>();
+	Set<String> resultsMap = new HashSet<String>();
 		
-	LinkedList<VertexMessageSteps> forwardLocalVertexList;
-	//private LinkedList<VertexMessageSteps> revLocalVertexList;
+
 	//private HashMap<Long,HashMap<String,LinkedList<Long>>> inVerticesMap;
 	HashMap<Long,Long> remoteSubgraphMap; 
 
